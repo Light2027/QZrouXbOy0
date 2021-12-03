@@ -15,3 +15,10 @@ Time around 1.35h~
 + Started working on the main service -> Lots of possible side constraints...
 
 Time around 2.6h~
+
+## 01.12.2021
++ New Idea => TryParse for Milliseconds, Minutes and Hours
+
+## 02.12.2021
++ This is not going to be a good solution, sadly that is all the time I can invest...
++ Time around 3.7h~
