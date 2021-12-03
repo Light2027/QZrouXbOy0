@@ -16,7 +16,7 @@
             {
                 yield return new TestCaseData("1:23.45", "1:23.45");
                 yield return new TestCaseData("12345", "1:23.45");
-                yield return new TestCaseData("12345678");
+                yield return new TestCaseData("12345678", "12:34:56.78");
                 yield return new TestCaseData("02", "0.2");
                 yield return new TestCaseData("-02", "-0.2");
                 yield return new TestCaseData("+0.2", "+0.2");

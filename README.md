@@ -24,3 +24,5 @@ Time around 2.6h~
 + Time around 3.7h~
 + Found a new and hopefully cleaner approach
 + Time around 4.7h~
++ Mostly done with the base conversion part, validation part is still needed
++ Time around 5.9h~
