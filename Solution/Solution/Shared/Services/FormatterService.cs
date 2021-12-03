@@ -10,6 +10,50 @@
 
     public class FormatterService : IFormatterService
     {
+        public string FormatToTimeString2(string input)
+        {
+            // Check if it is already valid
+
+            // If not then return
+            // Division Section
+            string prefix = this.IsPrefix(input.First()) ? string.Concat(input.First()) : string.Empty;
+            string prefixlesInput = string.IsNullOrEmpty(prefix) ? input : this.StringSkip(input, 1);
+            string star = prefixlesInput.Last() == '*' ? string.Concat(prefixlesInput.Last()) : string.Empty;
+            string cleanInput = string.IsNullOrEmpty(star) ? prefixlesInput : this.StringTake(prefixlesInput, prefixlesInput.Length - 1);
+            string reversedCleanInput = string.Concat(cleanInput.Reverse());
+            string milliSeconds = null; // Needs its own function
+            string baselessCleanInput = null;
+            string seconds = StringTake(baselessCleanInput, 2);
+            string minutes = StringTake(StringSkip(baselessCleanInput, 2), 2);
+            string hours = StringTake(StringSkip(baselessCleanInput, 4), 2);
+
+            // Rule machine section
+            var builder = new StringBuilder(milliSeconds);
+            if (string.IsNullOrEmpty(seconds))
+            {
+
+                if (string.IsNullOrEmpty(minutes))
+                {
+                    if (string.IsNullOrEmpty(hours))
+                    {
+
+                    }
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        private string StringSkip(string input, int toSkip) => string.Concat(input.Skip(toSkip));
+
+        private string StringTake(string input, int toTake) => string.Concat(input.Take(toTake));
+
+        private bool StringIntInRange(string input, int lower, int upper)
+        {
+            var parsed = int.Parse(input);
+            return parsed >= lower && parsed <= upper;
+        }
+
         public string FormatToTimeString(string input)
         {
             if (string.IsNullOrWhiteSpace(input))
@@ -25,8 +69,10 @@
             // Correctly formatted time is fine then return a copy of it. (Not sanitizing it as, in case it needs it, it is not a valid timestring)
             // If partially correct e.g.: "1:234" => Error
 
-            if (this.IsValidTimeString(input))
-                return new string(input);
+            //if (this.IsValidTimeString(input))
+            //    return new string(input);
+
+            
 
             var inputValidator = new Regex(@"^([+-]?)(0?)(([1-9]|1[0-9]|2[0-3])?)(([0-9]|[1-5][0-9])?)(([0-9]|[1-5][0-9])?)(([1-9]\*)|[1-9][0-9])$");
             if (!inputValidator.IsMatch(input))
@@ -37,24 +83,26 @@
             var builder = new StringBuilder(baseString);
 
             // Indexes Last - 3 <-> Last - 5 => Seconds
-            string secondsToProcess = string.Concat(input.Take(input.Length - baseProcessedCharCount));
+            string secondsToProcess = input.Substring(input.Length - baseProcessedCharCount);
             if (this.TryParseSeconds(secondsToProcess, out string seconds, out int secondsProcessedCharCount))
             {
                 builder.Insert(0, seconds);
                 // Indexes Last - 6 <-> Last - 8 => Minutes
-                string minutesToProcess = string.Concat(secondsToProcess.Take(secondsToProcess.Length - secondsProcessedCharCount));
+                string minutesToProcess = secondsToProcess.Substring(secondsToProcess.Length - secondsProcessedCharCount);
                 if (this.TryParseMinutes(minutesToProcess, out string minutes, out int minutesProcessedCharCount))
                 {
                     builder.Insert(0, $"{minutes}:");
                     // Indexes Last - 9 <-> Last - 11 => Hours
-                    string hoursToProcess = string.Concat(minutesToProcess.Take(minutesToProcess.Length - minutesProcessedCharCount));
+                    string hoursToProcess = minutesToProcess.Substring(minutesToProcess.Length - minutesProcessedCharCount);
                     if (this.TryParseHours(hoursToProcess, out string hours, out int hoursProcessedCharCount))
+                    {
                         builder.Insert(0, $"{hours}:");
+                    }
                 }
             }
 
             // Index 0 => Possible prefix 
-            if (input.First() == '+' || input.First() == '-')
+            if (this.IsPrefix(input.First()))
                 builder.Insert(0, input.First());
 
             return builder.ToString();
@@ -67,6 +115,44 @@
 
 
             throw new NotImplementedException();
+        }
+
+        private bool IsPrefix(char c) => c == '+' || c == '-';
+
+        private bool TryConvertLimitedIntString(string input, int lower, int upper, out string output, out int processedCharCount)
+        {
+            var lastIndex = input.Length - 1;
+            if (
+                lastIndex < 0
+                || (
+                    lastIndex >= 0
+                    && !char.IsDigit(input[lastIndex])
+                    && this.IsPrefix(input[lastIndex]))
+                )
+            {
+                output = string.Empty;
+                processedCharCount = 0;
+                return false;
+            }
+
+            var decimalIndex = input.Length - 2;
+            if (
+                decimalIndex < 0
+                || (decimalIndex >= 0 && this.IsPrefix(input[decimalIndex]))
+                )
+            {
+                output = string.Concat(input[lastIndex]);
+                processedCharCount = 1;
+                return true;
+            }
+
+            output = $"{input[decimalIndex]}{input[lastIndex]}";
+            byte checkValue = Convert.ToByte(output);
+            if(checkValue < lower || checkValue > upper)
+                throw new ArgumentOutOfRangeException($"The number: {input[decimalIndex]} at that decimal place must be between {lower} and {upper}.");
+
+            processedCharCount = 2;
+            return true;
         }
 
         /// <summary>
@@ -88,7 +174,7 @@
 
             // If this is a digit then a 0 decimal value is allowed (301 -> 3.01), if it is a prefix then it is the second value (-02 -> -0.2), not allowed if last index is a '*'
             var indicatorIndex = input.Length - 3;
-            bool hasPrefix = input[indicatorIndex] == '+' || input[indicatorIndex] == '-';
+            bool hasPrefix = this.IsPrefix(input[indicatorIndex]);
             int processedCharCount = hasPrefix ? 3 : 2;
 
             return hasPrefix ? ($"{input[indicatorIndex]}{input[decimalIndex]}.{input[lastIndex]}", processedCharCount) : ($".{input[decimalIndex]}{input[lastIndex]}", processedCharCount);
@@ -96,36 +182,34 @@
 
         private bool TryParseSeconds(string input, out string seconds, out int processedCharCount)
         {
-            if (string.IsNullOrEmpty(input))
-            {
-                seconds = string.Empty;
-                processedCharCount = 0;
-                return false;
-            }
-
             // <-
             // {ss}ms
-
-            throw new NotImplementedException();
+            var returnValue = this.TryConvertLimitedIntString(input, 1, 59, out string proxySeconds, out int proxyProcessedCharCount);
+            seconds = proxySeconds;
+            processedCharCount = proxyProcessedCharCount;
+            return returnValue;
         }
 
         private bool TryParseMinutes(string input, out string minutes, out int processedCharCount)
         {
-            if (string.IsNullOrEmpty(input))
-            {
-                minutes = string.Empty;
-                processedCharCount = 0;
-                return false;
-            }
-
             // <-
             // {mm}ssms
-            throw new NotImplementedException();
+            var returnValue = this.TryConvertLimitedIntString(input, out string proxyMinutes, out int proxyProcessedCharCount);
+            minutes = proxyMinutes;
+            processedCharCount = proxyProcessedCharCount;
+            return returnValue;
         }
 
         private bool TryParseHours(string input, out string hours, out int processedCharCount)
         {
-            if (string.IsNullOrEmpty(input))
+            var lastIndex = input.Length - 1;
+            if (
+                lastIndex < 0
+                || (
+                    lastIndex >= 0
+                    && !char.IsDigit(input[lastIndex])
+                    && this.IsPrefix(input[lastIndex]))
+                )
             {
                 hours = string.Empty;
                 processedCharCount = 0;
@@ -134,6 +218,9 @@
 
             // <-
             // {hh}mmssms
+            var decimalIndex = input.Length - 2;
+
+
             throw new NotImplementedException();
         }
     }

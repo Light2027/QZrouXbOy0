@@ -22,3 +22,5 @@ Time around 2.6h~
 ## 02.12.2021
 + This is not going to be a good solution, sadly that is all the time I can invest...
 + Time around 3.7h~
++ Found a new and hopefully cleaner approach
++ Time around 4.7h~

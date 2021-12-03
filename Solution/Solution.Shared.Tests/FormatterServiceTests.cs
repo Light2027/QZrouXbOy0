@@ -14,7 +14,7 @@ namespace Solution.Shared.Tests
             this.formatterService = new FormatterService();
         }
 
-        [Test, TestCaseSource(typeof(FormatterServiceTestsData), nameof(FormatterServiceTestsData.))]
+        [Test, TestCaseSource(typeof(FormatterServiceTestsData), nameof(FormatterServiceTestsData.BasicCorrectTestData))]
         public void ExampleDataTest(string input, string expectedReturnValue)
         {
             Assert.AreEqual(expectedReturnValue, this.formatterService.FormatToTimeString(input));
