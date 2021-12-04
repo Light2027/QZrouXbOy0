@@ -15,19 +15,20 @@
             if (string.IsNullOrWhiteSpace(input))
                 throw new ArgumentException($"'{nameof(input)}' cannot be null or whitespace.", nameof(input));
 
-            if (input.All(c => c == '0'))
-                throw new ArgumentException($"{nameof(input)} cannot solely consist of zeros(0)-s.");
-
             // Check if it is already valid
-            //if (this.IsValidTimeString(input))
-            //    return new string(input);
+            if (this.IsValidTimeString(input))
+                return new string(input);
 
             // If not then return
             // Division Section
             string prefix = this.IsPrefix(input.First()) ? string.Concat(input.First()) : string.Empty;
             string prefixlesInput = string.IsNullOrEmpty(prefix) ? input : this.StringSkip(input, 1);
             string star = prefixlesInput.Last() == '*' ? string.Concat(prefixlesInput.Last()) : string.Empty;
-            string cleanInput = string.IsNullOrEmpty(star) ? prefixlesInput : this.StringTake(prefixlesInput, prefixlesInput.Length - 1);
+            string cleanInputWithPadding = string.IsNullOrEmpty(star) ? prefixlesInput : this.StringTake(prefixlesInput, prefixlesInput.Length - 1);
+            string cleanInput = cleanInputWithPadding.Length < 3 ? cleanInputWithPadding : cleanInputWithPadding.TrimStart('0');
+            if (string.IsNullOrEmpty(cleanInput))
+                throw new ArgumentException($"Core input: '{nameof(cleanInput)}' cannot solely consist of zeros (0).");
+
             string reversedCleanInput = StringReverse(cleanInput);
             if (!reversedCleanInput.All(c => char.IsDigit(c)))
                 throw new ArgumentException($"The core part of the input ('{StringReverse(reversedCleanInput)}') must consists solely of digits.");
@@ -48,23 +49,19 @@
                         else
                             return $"{prefix}{reversedCleanInput[1]}.{reversedCleanInput[0]}";
                 }
-
-
-                // Edge case: 0x => where x is a between 1-9 => result = 0.x
-                throw new NotImplementedException();
             }
 
             string milliSeconds = StringReverse(ExtractMilliseconds(reversedCleanInput, !string.IsNullOrEmpty(star), out string baselessCleanInput));
-            
+
             string seconds = StringReverse(StringTake(baselessCleanInput, 2));
 
             string minutesRaw = StringSkip(baselessCleanInput, 2);
             string minutes = StringReverse(StringTake(minutesRaw, 2));
-            
+
             string hoursRaw = StringSkip(minutesRaw, 2);
             string hours = StringReverse(StringTake(hoursRaw, 2));
-            
-            string remainder = StringSkip(hoursRaw,2);
+
+            string remainder = StringSkip(hoursRaw, 2);
             if (remainder.Length != 0)
                 throw new ArgumentException($"{remainder} in {input} cannot be interpreted.");
 
@@ -72,30 +69,17 @@
             var builder = new StringBuilder(milliSeconds);
             if (!string.IsNullOrEmpty(seconds))
             {
-                if(!StringIntInRange(seconds, 0, 59))
+                if (!StringIntInRange(seconds, 0, 59))
                     throw new ArgumentException($"{seconds} in {input} must be between 01 and 59.");
 
-                string dot = string.IsNullOrEmpty(milliSeconds) ? string.Empty : ".";
-                if (
-                    string.IsNullOrEmpty(minutes)
-                    && seconds[0] == '0'
-                    )
-                        builder.Insert(0,$"{seconds[1]}{dot}");
-                else
-                    builder.Insert(0, $"{seconds}{dot}");
+                builder.Insert(0, $"{seconds}.");
 
                 if (!string.IsNullOrEmpty(minutes))
                 {
                     if (!StringIntInRange(minutes, 0, 59))
                         throw new ArgumentException($"{minutes} in {input} must be between 01 and 59.");
 
-                    if (
-                    string.IsNullOrEmpty(hours)
-                    && minutes[0] == '0'
-                    )
-                        builder.Insert(0,$"{minutes[1]}:");
-                    else
-                        builder.Insert(0, $"{minutes}:");
+                    builder.Insert(0, $"{minutes}:");
 
                     if (!string.IsNullOrEmpty(hours))
                     {
@@ -130,8 +114,97 @@
         {
             // Rule:
             // [+-]? ([0-23]:)? ([0-59]:)? ([0-59].[0-999])
+            string prefix = this.IsPrefix(input.First()) ? string.Concat(input.First()) : string.Empty;
+            string prefixlesInput = string.IsNullOrEmpty(prefix) ? input : this.StringSkip(input, 1);
+            string star = prefixlesInput.Last() == '*' ? string.Concat(prefixlesInput.Last()) : string.Empty;
+            string cleanInput = string.IsNullOrEmpty(star) ? prefixlesInput : this.StringTake(prefixlesInput, prefixlesInput.Length - 1);
+            string reversedCleanInput = StringReverse(cleanInput);
+            if (
+                !reversedCleanInput.All(c => char.IsDigit(c))
+                && this.TrySplitTimeString(reversedCleanInput, out string[] splitReversedCleanInput)
+                )
+            {
+                if (splitReversedCleanInput.Any(x => string.IsNullOrEmpty(x)))
+                    throw new ArgumentException($"Value missing in '{input}', double seperation (.. or ::) is not allowed.");
+
+                if (splitReversedCleanInput.All(x => x.All(c => c == '0')))
+                    throw new ArgumentException("All zeros (0) time strings are not valid.");
+
+                if (!splitReversedCleanInput.All(x => x.All(c => char.IsDigit(c))))
+                    throw new ArgumentException($"Non digit character found in '{input}', these are not allowed between separators ('.',':').");
 
 
+                if (splitReversedCleanInput.Last().Length > 3)
+                    throw new ArgumentException("Millisecond accuracy must be at most 3 decimal places.");
+
+                switch (splitReversedCleanInput.Length)
+                {
+                    // 1 is not possible here
+                    case 2:
+                        {
+                            if (splitReversedCleanInput[0].Length > 2)
+                                throw new ArgumentException("Extra numbers in seconds are not allowed.");
+
+                            string seconds = this.StringReverse(splitReversedCleanInput.First());
+                            if (
+                                seconds.Length == 2
+                                && seconds.First() == '0' // 0s:ms => Is not allowed
+                                )
+                                throw new ArgumentException($"Zero (0) padding '{seconds}' is not allowed.");
+
+                            string milliSeconds = this.StringReverse(splitReversedCleanInput[1]);
+
+                            throw new NotImplementedException("More checks needed.");
+
+                            return true;
+                        }
+                    case 3:
+                        {
+                            if (splitReversedCleanInput[0].Length > 2)
+                                throw new ArgumentException("Extra numbers in minutes are not allowed.");
+
+                            string minutes = this.StringReverse(splitReversedCleanInput.First());
+                            if (
+                                minutes.Length == 2
+                                && minutes.First() == '0' // 0m:ss:ms => Is not allowed
+                                )
+                                throw new ArgumentException($"Zero (0) padding '{minutes}' is not allowed.");
+
+                            string seconds = this.StringReverse(splitReversedCleanInput[1]);
+                            string milliSeconds = this.StringReverse(splitReversedCleanInput[2]);
+
+                            throw new NotImplementedException("More checks needed.");
+
+                            return true;
+                        }
+                    case 4:
+                        {
+                            if (splitReversedCleanInput[0].Length > 2)
+                                throw new ArgumentException("Extra numbers in hours are not allowed.");
+
+                            string hours = this.StringReverse(splitReversedCleanInput.First());
+                            if (
+                                hours.Length == 2
+                                && hours.First() == '0' // 0h:mm:ss:ms => Is not allowed
+                                )
+                                throw new ArgumentException($"Zero (0) padding '{hours}' is not allowed.");
+
+                            string minutes = this.StringReverse(splitReversedCleanInput[1]);
+                            string seconds = this.StringReverse(splitReversedCleanInput[2]);
+                            string milliSeconds = this.StringReverse(splitReversedCleanInput[3]);
+
+                            throw new NotImplementedException("More checks needed.");
+
+                            return true;
+                        }
+                }
+            }
+
+            return false;
+        }
+
+        private bool TrySplitTimeString(string cleanInput, out string[] splitCleanInput)
+        {
             throw new NotImplementedException();
         }
 
