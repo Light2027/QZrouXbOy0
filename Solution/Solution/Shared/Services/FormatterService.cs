@@ -121,9 +121,10 @@
             string reversedCleanInput = StringReverse(cleanInput);
             if (
                 !reversedCleanInput.All(c => char.IsDigit(c))
-                && this.TrySplitTimeString(reversedCleanInput, out string[] splitReversedCleanInput)
                 )
             {
+                string[] splitReversedCleanInput = this.SplitTimeString(reversedCleanInput);
+
                 if (splitReversedCleanInput.Any(x => string.IsNullOrEmpty(x)))
                     throw new ArgumentException($"Value missing in '{input}', double seperation (.. or ::) is not allowed.");
 
@@ -148,13 +149,14 @@
                             string seconds = this.StringReverse(splitReversedCleanInput.First());
                             if (
                                 seconds.Length == 2
-                                && seconds.First() == '0' // 0s:ms => Is not allowed
+                                && seconds.First() == '0' // 0s.ms => Is not allowed
                                 )
                                 throw new ArgumentException($"Zero (0) padding '{seconds}' is not allowed.");
 
                             string milliSeconds = this.StringReverse(splitReversedCleanInput[1]);
 
-                            throw new NotImplementedException("More checks needed.");
+                            if (!this.StringIntInRange(seconds, 0, 59))
+                                throw new ArgumentException("Seconds are out of range, valid range is 0 to 59.");
 
                             return true;
                         }
@@ -166,14 +168,18 @@
                             string minutes = this.StringReverse(splitReversedCleanInput.First());
                             if (
                                 minutes.Length == 2
-                                && minutes.First() == '0' // 0m:ss:ms => Is not allowed
+                                && minutes.First() == '0' // 0m:ss.ms => Is not allowed
                                 )
                                 throw new ArgumentException($"Zero (0) padding '{minutes}' is not allowed.");
 
-                            string seconds = this.StringReverse(splitReversedCleanInput[1]);
-                            string milliSeconds = this.StringReverse(splitReversedCleanInput[2]);
+                            if (!this.StringIntInRange(minutes, 1, 59))
+                                throw new ArgumentException("Minutes are out of range, valid range in this context is 1 to 59.");
 
-                            throw new NotImplementedException("More checks needed.");
+                            string seconds = this.StringReverse(splitReversedCleanInput[1]);
+                            if (!this.StringIntInRange(seconds, 0, 59))
+                                throw new ArgumentException("Seconds are out of range, valid range is 0 to 59.");
+
+                            string milliSeconds = this.StringReverse(splitReversedCleanInput[2]);
 
                             return true;
                         }
@@ -185,15 +191,22 @@
                             string hours = this.StringReverse(splitReversedCleanInput.First());
                             if (
                                 hours.Length == 2
-                                && hours.First() == '0' // 0h:mm:ss:ms => Is not allowed
+                                && hours.First() == '0' // 0h:mm:ss.ms => Is not allowed
                                 )
                                 throw new ArgumentException($"Zero (0) padding '{hours}' is not allowed.");
 
-                            string minutes = this.StringReverse(splitReversedCleanInput[1]);
-                            string seconds = this.StringReverse(splitReversedCleanInput[2]);
-                            string milliSeconds = this.StringReverse(splitReversedCleanInput[3]);
+                            if (!this.StringIntInRange(hours, 1, 23))
+                                throw new ArgumentException("Hours are out of range, valid range is 1 to 23.");
 
-                            throw new NotImplementedException("More checks needed.");
+                            string minutes = this.StringReverse(splitReversedCleanInput[1]);
+                            if (!this.StringIntInRange(minutes, 0, 59))
+                                throw new ArgumentException("Minutes are out of range, valid range in this context is 0 to 59.");
+
+                            string seconds = this.StringReverse(splitReversedCleanInput[2]);
+                            if (!this.StringIntInRange(seconds, 0, 59))
+                                throw new ArgumentException("Seconds are out of range, valid range is 0 to 59.");
+
+                            string milliSeconds = this.StringReverse(splitReversedCleanInput[3]);
 
                             return true;
                         }
@@ -203,9 +216,42 @@
             return false;
         }
 
-        private bool TrySplitTimeString(string cleanInput, out string[] splitCleanInput)
+        private string[] SplitTimeString(string reversedCleanInput)
         {
-            throw new NotImplementedException();
+            // ms.ss:mm:hh
+            // [ms, (ss:mm:hh)]
+            var milliSecondsSplit = reversedCleanInput.Split('.', 2);
+            if (milliSecondsSplit[1].Contains(':'))
+            {
+                // [ss, (mm:hh)]
+                var secondSplit = milliSecondsSplit[1].Split(':', 2);
+                if (secondSplit[1].Contains(':'))
+                {
+                    // [mm,hh]
+                    var minuteSplit = secondSplit[1].Split(':');
+                    
+                    // [h,mm,ss,ms]
+                    string[] h_m_s_ms = new string[4];
+                    h_m_s_ms[0] = minuteSplit[1];
+                    h_m_s_ms[1] = minuteSplit[0];
+                    h_m_s_ms[2] = secondSplit[0];
+                    h_m_s_ms[3] = milliSecondsSplit[0];
+                    return h_m_s_ms;
+                }
+
+                // [mm,ss,ms]
+                string[] m_s_ms = new string[3];
+                m_s_ms[0] = secondSplit[1];
+                m_s_ms[1] = secondSplit[0];
+                m_s_ms[2] = milliSecondsSplit[0];
+                return m_s_ms;
+            }
+
+            // [s,ms]
+            string[] s_ms = new string[2];
+            s_ms[0] = milliSecondsSplit[1];
+            s_ms[1] = milliSecondsSplit[0];
+            return s_ms;
         }
 
         private string ExtractMilliseconds(string reversedCleanInput, bool hasStar, out string baselessCleanInput)
@@ -218,7 +264,7 @@
                     return this.StringTake(reversedCleanInput, 1);
                 }
                 else
-                    throw new ArgumentException("Invalid character '{reversedInput[0]}' in input."); // This should not be possible, but still...
+                    throw new ArgumentException($"Invalid character '{reversedCleanInput[0]}' in input."); // This should not be possible, but still...
             }
 
             baselessCleanInput = this.StringSkip(reversedCleanInput, 2);
