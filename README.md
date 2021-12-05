@@ -35,3 +35,5 @@ Time around 2.6h~
 + Decided to stick with english and not add translations. And just to overall keep it simple.
 + Almost there, did not consider 0 accuracy time strings at validation...
 + Time around 7.7h~
++ And I belive it is done, it is a managable solution.
++ Final time around 8.3h~
