@@ -30,3 +30,8 @@ Time around 2.6h~
 # 04.12.2021
 + Getting close to finishing the formatter, the rest afterward should not take long
 + Time around 6.9h~
+
+# 05.12.2021
++ Decided to stick with english and not add translations. And just to overall keep it simple.
++ Almost there, did not consider 0 accuracy time strings at validation...
++ Time around 7.7h~

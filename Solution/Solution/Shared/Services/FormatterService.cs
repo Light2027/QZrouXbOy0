@@ -119,10 +119,9 @@
             string star = prefixlesInput.Last() == '*' ? string.Concat(prefixlesInput.Last()) : string.Empty;
             string cleanInput = string.IsNullOrEmpty(star) ? prefixlesInput : this.StringTake(prefixlesInput, prefixlesInput.Length - 1);
             string reversedCleanInput = StringReverse(cleanInput);
-            if (
-                !reversedCleanInput.All(c => char.IsDigit(c))
-                )
+            if (!reversedCleanInput.All(c => char.IsDigit(c)))
             {
+                // Accuracy of zero is also valid!
                 string[] splitReversedCleanInput = this.SplitTimeString(reversedCleanInput);
 
                 if (splitReversedCleanInput.Any(x => string.IsNullOrEmpty(x)))
