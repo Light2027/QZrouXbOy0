@@ -22,6 +22,20 @@
                 yield return new TestCaseData("+0.2", "+0.2");
                 yield return new TestCaseData("1:23.4*", "1:23.4*");
                 yield return new TestCaseData("1234*", "1:23.4*");
+
+                // Zero accuracy cases
+                yield return new TestCaseData("1:23", "1:23");
+                yield return new TestCaseData("11:23", "11:23");
+                yield return new TestCaseData("1:11:23", "1:11:23");
+                yield return new TestCaseData("11:11:23", "11:11:23");
+                yield return new TestCaseData("+1:23", "+1:23");
+                yield return new TestCaseData("+11:23", "+11:23");
+                yield return new TestCaseData("+1:11:23", "+1:11:23");
+                yield return new TestCaseData("+11:11:23", "+11:11:23");
+                yield return new TestCaseData("-1:23", "-1:23");
+                yield return new TestCaseData("-11:23", "-11:23");
+                yield return new TestCaseData("-1:11:23", "-1:11:23");
+                yield return new TestCaseData("-11:11:23", "-11:11:23");
             }
         }
 
@@ -29,7 +43,7 @@
         {
             get
             {
-                yield return new TestCaseData("1:23.4524");
+                yield return new TestCaseData("1:23.4524", "Millisecond accuracy must be at most 3 decimal places.");
             }
         }
     }

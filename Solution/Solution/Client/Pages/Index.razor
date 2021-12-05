@@ -2,18 +2,20 @@
 
 @inject IFormatterService formatterService;
 
-<div class="container justify-content-center row mt-5">
-    <h3 class="mt-5">Time input formatter</h3>
-    <input type="text" @bind="this.RawInput"/>
-    <p class="mt-5">
-        @this.timeString
-    </p>
-    <p class="mt-1 text-danger" visibility="@(string.IsNullOrEmpty(this.errorMessage) ? "collapse" : "visible")">
-        @this.errorMessage
-    </p>
+<div class="container justify-content-center mt-5">
+    <div class="row">
+        <h3 class="mt-5">Time input formatter</h3>
+        <input type="text" @bind="this.RawInput" />
+        <p class="mt-5">
+            @this.timeString
+        </p>
+        <p class="mt-1 text-danger" visibility="@(string.IsNullOrEmpty(this.errorMessage) ? "collapse" : "visible")">
+            @this.errorMessage
+        </p>
+    </div>
 </div>
 
-@code{
+@code {
     private string timeString = string.Empty;
     private string errorMessage = string.Empty;
     private string rawInput = string.Empty;
@@ -27,12 +29,13 @@
             try
             {
                 this.timeString = this.formatterService.FormatToTimeString(value);
+                this.errorMessage = string.Empty;
             }
             catch (ArgumentException e)
             {
                 this.errorMessage = e.Message;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 this.errorMessage = e.Message; // For Debug
             }

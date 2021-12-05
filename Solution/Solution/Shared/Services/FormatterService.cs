@@ -13,7 +13,11 @@
         public string FormatToTimeString(string input)
         {
             if (string.IsNullOrWhiteSpace(input))
-                throw new ArgumentException($"'{nameof(input)}' cannot be null or whitespace.", nameof(input));
+                throw new ArgumentException($"'{nameof(input)}' cannot be null or whitespace.");
+
+            // Input must contain some digits
+            if (!input.Any(c => char.IsDigit(c)))
+                throw new ArgumentException($"{nameof(input)}: '{input}' is incorrect.");
 
             // Check if it is already valid
             if (this.IsValidTimeString(input))
@@ -113,7 +117,7 @@
         private bool IsValidTimeString(string input)
         {
             // Rule:
-            // [+-]? ([0-23]:)? ([0-59]:)? ([0-59].[0-999])
+            // [+-]? ([0-23]:)? ([0-59]:)? ([0-59].[0-999]) *?
             string prefix = this.IsPrefix(input.First()) ? string.Concat(input.First()) : string.Empty;
             string prefixlesInput = string.IsNullOrEmpty(prefix) ? input : this.StringSkip(input, 1);
             string star = prefixlesInput.Last() == '*' ? string.Concat(prefixlesInput.Last()) : string.Empty;
@@ -121,6 +125,67 @@
             string reversedCleanInput = StringReverse(cleanInput);
             if (!reversedCleanInput.All(c => char.IsDigit(c)))
             {
+                // Zero accuracy case => hh:mm:ss
+                if (!reversedCleanInput.Contains('.'))
+                {
+                    if (!reversedCleanInput.Contains(':'))
+                        throw new ArgumentException($"Invalid input, minimal zero accuracy time string must be have at least zero minutes (0:ss).");
+
+                    // [ss, mm, hh] || [ss,mm]
+                    string[] zeroAccuracySplitReversedCleanInput =
+                        reversedCleanInput.Split(':', 3);
+
+                    if (!zeroAccuracySplitReversedCleanInput.All(x => x.All(c => char.IsDigit(c))))
+                        throw new ArgumentException($"Non digit character found in '{input}', these are not allowed between the zero accuracy separator (':').");
+
+                    if (zeroAccuracySplitReversedCleanInput.All(x => x.All(c => c == '0')))
+                        throw new ArgumentException("All zeros (0) time strings are not valid.");
+
+                    if (zeroAccuracySplitReversedCleanInput.Any(x => x.Length > 2))
+                        throw new ArgumentException($"Invalid digit count in input: {input}");
+
+                    if (!zeroAccuracySplitReversedCleanInput.Take(zeroAccuracySplitReversedCleanInput.Length - 1).All(x => x.Length == 2))
+                        throw new ArgumentException($"Intermediate units (':xx:') must always consist of 2 digits.");
+
+                    switch (zeroAccuracySplitReversedCleanInput.Length)
+                    {
+                        case 2:
+                            {
+                                string seconds = this.StringReverse(zeroAccuracySplitReversedCleanInput.First());
+                                if (!this.StringIntInRange(seconds, 0, 59))
+                                    throw new ArgumentException("Minutes are out of range, valid range in this context is 0 to 59.");
+
+                                string minutes = this.StringReverse(zeroAccuracySplitReversedCleanInput[1]);
+                                if (!this.StringIntInRange(minutes, 0, 59))
+                                    throw new ArgumentException("Minutes are out of range, valid range in this context is 0 to 59.");
+
+                                return true;
+                            }
+                        case 3:
+                            {
+                                string seconds = this.StringReverse(zeroAccuracySplitReversedCleanInput.First());
+                                if (!this.StringIntInRange(seconds, 0, 59))
+                                    throw new ArgumentException("Minutes are out of range, valid range in this context is 0 to 59.");
+
+                                string minutes = this.StringReverse(zeroAccuracySplitReversedCleanInput[1]);
+                                if (!this.StringIntInRange(minutes, 0, 59))
+                                    throw new ArgumentException("Minutes are out of range, valid range in this context is 0 to 59.");
+
+                                string hours = this.StringReverse(zeroAccuracySplitReversedCleanInput[2]);
+                                if (!this.StringIntInRange(minutes, 1, 23))
+                                    throw new ArgumentException("Minutes are out of range, valid range in this context is 1 to 23.");
+
+                                if (
+                                    hours.Length == 2
+                                    && hours[0] == '0'
+                                    )
+                                    throw new ArgumentException($"Zero (0) padding '{hours}' is not allowed.");
+
+                                return true;
+                            }
+                    }
+                }
+
                 // Accuracy of zero is also valid!
                 string[] splitReversedCleanInput = this.SplitTimeString(reversedCleanInput);
 
@@ -133,25 +198,28 @@
                 if (!splitReversedCleanInput.All(x => x.All(c => char.IsDigit(c))))
                     throw new ArgumentException($"Non digit character found in '{input}', these are not allowed between separators ('.',':').");
 
-
                 if (splitReversedCleanInput.Last().Length > 3)
                     throw new ArgumentException("Millisecond accuracy must be at most 3 decimal places.");
+
+                if(splitReversedCleanInput.Reverse().Skip(1).Any(x => x.Length > 2))
+                    throw new ArgumentException($"Invalid digit count in input: {input}");
+
+                if (!splitReversedCleanInput.Skip(1).Take(splitReversedCleanInput.Length - 2).All(x => x.Length == 2))
+                    throw new ArgumentException($"Intermediate units (':xx(:/.)') must always consist of 2 digits.");
+
+                string firstUnit = this.StringReverse(splitReversedCleanInput.First());
+                if (
+                   firstUnit.Length == 2
+                   && firstUnit.First() == '0' // 0... => Is not allowed
+                   )
+                    throw new ArgumentException($"Zero (0) padding '{firstUnit}' is not allowed.");
 
                 switch (splitReversedCleanInput.Length)
                 {
                     // 1 is not possible here
                     case 2:
                         {
-                            if (splitReversedCleanInput[0].Length > 2)
-                                throw new ArgumentException("Extra numbers in seconds are not allowed.");
-
                             string seconds = this.StringReverse(splitReversedCleanInput.First());
-                            if (
-                                seconds.Length == 2
-                                && seconds.First() == '0' // 0s.ms => Is not allowed
-                                )
-                                throw new ArgumentException($"Zero (0) padding '{seconds}' is not allowed.");
-
                             string milliSeconds = this.StringReverse(splitReversedCleanInput[1]);
 
                             if (!this.StringIntInRange(seconds, 0, 59))
@@ -161,16 +229,7 @@
                         }
                     case 3:
                         {
-                            if (splitReversedCleanInput[0].Length > 2)
-                                throw new ArgumentException("Extra numbers in minutes are not allowed.");
-
                             string minutes = this.StringReverse(splitReversedCleanInput.First());
-                            if (
-                                minutes.Length == 2
-                                && minutes.First() == '0' // 0m:ss.ms => Is not allowed
-                                )
-                                throw new ArgumentException($"Zero (0) padding '{minutes}' is not allowed.");
-
                             if (!this.StringIntInRange(minutes, 1, 59))
                                 throw new ArgumentException("Minutes are out of range, valid range in this context is 1 to 59.");
 
@@ -184,16 +243,7 @@
                         }
                     case 4:
                         {
-                            if (splitReversedCleanInput[0].Length > 2)
-                                throw new ArgumentException("Extra numbers in hours are not allowed.");
-
                             string hours = this.StringReverse(splitReversedCleanInput.First());
-                            if (
-                                hours.Length == 2
-                                && hours.First() == '0' // 0h:mm:ss.ms => Is not allowed
-                                )
-                                throw new ArgumentException($"Zero (0) padding '{hours}' is not allowed.");
-
                             if (!this.StringIntInRange(hours, 1, 23))
                                 throw new ArgumentException("Hours are out of range, valid range is 1 to 23.");
 
